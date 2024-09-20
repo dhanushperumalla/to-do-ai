@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from datetime import date
 from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 
@@ -13,7 +14,7 @@ TASKS_FILE = "tasks.csv"
 
 # Initialize the tasks file if it doesn't exist
 if not os.path.exists(TASKS_FILE):
-    df = pd.DataFrame(columns=['Task', 'Category', 'Priority', 'Completed', 'Description'])
+    df = pd.DataFrame(columns=['Task', 'Category', 'Priority', 'Completed', 'Description', 'Deadline'])
     df.to_csv(TASKS_FILE, index=False)
 
 # Load tasks from the CSV file
@@ -27,8 +28,7 @@ def save_tasks(df):
 # Prompt template for AI description
 description_template = PromptTemplate(
     input_variables=["task", "category", "priority"],
-    template="""
-    Generate a brief, motivating description for the following task:
+    template="""Generate a brief, motivating description for the following task:
     Task: {task}
     Category: {category}
     Priority: {priority}
@@ -36,7 +36,7 @@ description_template = PromptTemplate(
     The description should:
     1. Explain the importance or potential impact of the task
     2. Provide a quick tip or strategy for accomplishing it
-    3. Be concise (2-3 lines max)
+    3. Be concise (2-3 Bullet points max)
     4. Be encouraging and positive in tone
 
     Description:
@@ -51,7 +51,7 @@ def generate_ai_description(task, category, priority):
 
 # UI for the app
 def todo_app():
-    st.title("AI-based To-Do List with Task Descriptions")
+    st.title("AI-based To-Do List with Task Descriptions and Deadlines")
 
     # Initialize session state
     if 'df' not in st.session_state:
@@ -67,6 +67,7 @@ def todo_app():
         category = st.selectbox("Category", ["Work", "Personal", "Other"])
         priority = st.selectbox("Priority", ["Low", "Medium", "High"])
         description = st.text_area("Description (optional)", help="Leave blank for AI to generate a description.")
+        deadline = st.date_input("Deadline", value=date.today(), help="Select the deadline for this task.")
         
         # AI-Description button
         ai_description_trigger = st.checkbox("Use AI-Description ⭐")
@@ -86,11 +87,12 @@ def todo_app():
                 'Category': [category], 
                 'Priority': [priority], 
                 'Completed': [False],
-                'Description': [description]
+                'Description': [description],
+                'Deadline': [deadline]  # Add the deadline here
             })
             st.session_state.df = pd.concat([st.session_state.df, new_task], ignore_index=True)
             save_tasks(st.session_state.df)
-            st.success(f"Task '{task}' added with description!")
+            st.success(f"Task '{task}' added with deadline {deadline}!")
             st.rerun()
         elif submitted:
             st.warning("Please enter a task before submitting.")
@@ -99,7 +101,7 @@ def todo_app():
     st.subheader("Tasks")
     if not st.session_state.df.empty:
         for i, row in st.session_state.df.iterrows():
-            task_text = f"**{row['Task']}** (Category: {row['Category']}, Priority: {row['Priority']})"
+            task_text = f"**{row['Task']}** (Category: {row['Category']}, Priority: {row['Priority']}, Deadline: {row['Deadline']})"
             task_description = row['Description']
             if row['Completed']:
                 st.write(f"~~{task_text}~~ - {task_description}")
@@ -125,12 +127,14 @@ def todo_app():
                 category = st.selectbox("Category", ["Work", "Personal", "Other"], index=["Work", "Personal", "Other"].index(st.session_state.df.at[i, 'Category']))
                 priority = st.selectbox("Priority", ["Low", "Medium", "High"], index=["Low", "Medium", "High"].index(st.session_state.df.at[i, 'Priority']))
                 description = st.text_area("Description", value=st.session_state.df.at[i, 'Description'])
+                deadline = st.date_input("Deadline", value=pd.to_datetime(st.session_state.df.at[i, 'Deadline']).date())
                 
                 if st.form_submit_button("Update Task"):
                     st.session_state.df.at[i, 'Task'] = task
                     st.session_state.df.at[i, 'Category'] = category
                     st.session_state.df.at[i, 'Priority'] = priority
                     st.session_state.df.at[i, 'Description'] = description
+                    st.session_state.df.at[i, 'Deadline'] = deadline
                     save_tasks(st.session_state.df)
                     st.session_state.editing_task = None
                     st.rerun()
