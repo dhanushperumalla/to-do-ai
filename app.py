@@ -36,7 +36,7 @@ description_template = PromptTemplate(
     The description should:
     1. Explain the importance or potential impact of the task
     2. Provide a quick tip or strategy for accomplishing it
-    3. Be concise (2-3 Bullet points max)
+    3. Be concise (2-3 lines max)
     4. Be encouraging and positive in tone
 
     Description:
